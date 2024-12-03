@@ -2,7 +2,6 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,26 +22,54 @@ public class DocumentManager {
     /**
      * Implementation of this method should upsert the document to your storage
      * And generate unique id if it does not exist, don't change [created] field
+     * <h2>
+     *  Generate ID if not present. Check creation date.
+     * </h2>
      *
      * @param document - document content and author data
      * @return saved document
      */
     public Document save(Document document) {
-        if (document.getId() == null || document.getId().isEmpty()){
-            document.setId(generateId());
+        generateDocumentId(document);
+        if (document.getCreated() == null){
+            document.setCreated(Instant.now());
         }
-        Instant created = Instant.now();
-        document.setCreated(created);
         this.documentsStorage.add(document);
         return document;
     }
+
+    /**
+     * Check if ID is present in document.
+     * Generate unique ID and set it to document
+     *
+     * @param document to check and generate id.
+     */
+    private void generateDocumentId(Document document){
+        if (document.getId() == null || document.getId().isEmpty()){
+            document.setId(generateId());
+            generateDocumentId(document);
+        }
+        Optional<Document> byId = findById(document.getId());
+        if (byId.isPresent()){
+            document.setId(generateId());
+            generateDocumentId(document);
+        }
+    }
+
+    /**
+     * Generate unique ID.
+     *
+     * @return random string UUID.
+     */
     private String generateId(){
         return UUID.randomUUID().toString();
     }
 
     /**
      * Implementation this method should find documents which match with request
-     *
+     * <h2>
+     * Filtered storage by present params
+     *  </h2>
      * @param request - search request, each field could be null
      * @return list matched documents
      */
@@ -50,12 +77,15 @@ public class DocumentManager {
 
         return this.documentsStorage.stream()
                 .filter(document -> request.getTitlePrefixes() == null ||
+                        request.getTitlePrefixes().isEmpty() ||
                         request.getTitlePrefixes()
                                 .stream().anyMatch(prefix -> document.getTitle().startsWith(prefix)))
                 .filter(document -> request.getContainsContents() == null ||
+                        request.getContainsContents().isEmpty() ||
                         request.getContainsContents()
                                 .stream().anyMatch(content -> document.getContent().contains(content)))
                 .filter(document -> request.getAuthorIds() == null ||
+                        request.getAuthorIds().isEmpty() ||
                         request.getAuthorIds().contains(document.getAuthor().getId()))
                 .filter(document -> request.getCreatedFrom() == null ||
                         !document.getCreated().isBefore(request.getCreatedFrom()))
@@ -67,6 +97,9 @@ public class DocumentManager {
 
     /**
      * Implementation this method should find document by id
+     * <h2>
+     *Filtered storage by document ID
+     *</h2>
      *
      * @param id - document id
      * @return optional document
