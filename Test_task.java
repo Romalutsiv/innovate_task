@@ -2,6 +2,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,7 +18,7 @@ import java.util.UUID;
  */
 public class DocumentManager {
 
-    private List<Document> documentsStorage;
+    private List<Document> documentsStorage = new ArrayList<>();
 
     /**
      * Implementation of this method should upsert the document to your storage
